@@ -1,0 +1,9 @@
+# dependencies
+/node_modules/
+/.wwebjs_auth/
+/.wwebjs_cache/
+/public/
+/upload/
+
+# Abaikan file lingkungan dan konfigurasi
+# .env         # File environment

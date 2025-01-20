@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot - Send Messages</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/v/dt/dt-2.2.1/fh-4.0.1/r-3.0.3/sb-1.8.1/datatables.min.css" rel="stylesheet">
+    <style>
+        .whatsapp-preview {
+            width: 375px;
+            max-width: 100%;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+        }
+
+        .message {
+            white-space: pre-wrap;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #111;
+        }
+
+        .whatsapp-preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .file-card {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-card .file-extension {
+            font-weight: bold;
+            font-size: 16px;
+            color: #fff;
+            background-color: #28a745;
+            border-radius: 50%;
+            /* Membuat elemen menjadi lingkaran */
+            width: 50px;
+            /* Ukuran lingkaran tetap */
+            height: 50px;
+            /* Ukuran lingkaran tetap */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            flex-shrink: 0;
+            /* Mencegah elemen mengecil */
+        }
+
+        .file-card .file-name {
+            font-size: 14px;
+            color: #333;
+            word-break: break-word;
+            flex-grow: 1;
+            /* Membuat elemen judul file menggunakan sisa ruang */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <div class="text-center mb-4">
+            <h1 class="text-primary">WhatsApp Broadcast ID: <span id="idWa"></span></h1>
+            <p class="text-muted">Send personalized messages to multiple recipients</p>
+        </div>
+
+        <div class="row">
+            <!-- Left Column: Upload Excel -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        Preview Pesan WhatsApp
+                    </div>
+                    <div class="card-body d-flex justify-content-center">
+                        <div class="whatsapp-preview">
+                            <!-- Tambahan elemen di atas message -->
+                            <div class="fileWa" id="fileWa">
+
+                            </div>
+                            <div class="message" id="messagePreview">
+                                <!-- Pesan akan di-render di sini -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button id="logoutBtn" class="btn btn-danger w-100 mt-3">Logout</button>
+
+            </div>
+
+            <!-- Right Column: Send Message Form -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        Send Messages
+                    </div>
+                    <div class="card-body">
+                        <form id="excelUploadForm">
+                            <div class="mb-3">
+                                <label for="excelFile" class="form-label">Upload Excel File</label>
+                                <div class="input-group">
+                                    <input type="file" id="excelFile" class="form-control" accept=".xlsx, .xls">
+                                    <button type="submit" class="input-group-text btn btn-primary">Check Data</button>
+                                </div>
+                                <div class="form-text">Upload an Excel file with phone numbers and other data.</div>
+                            </div>
+                        </form>
+                        <form id="messageForm">
+                            <input type="text" id="Json" name="json" hidden>
+                            <div class="mb-3">
+                                <label for="messageTemplate" class="form-label">Message Template</label>
+                                <div class="toolbar mb-2 d-flex align-items-center gap-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm"
+                                        onclick="applyStyle('*')" title="Bold">
+                                        <strong>B</strong>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm"
+                                        onclick="applyStyle('_')" title="Italic">
+                                        <em>I</em>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm"
+                                        onclick="applyStyle('~')" title="Strikethrough">
+                                        <del>S</del>
+                                    </button>
+                                    <div class="input-group">
+                                        <span class="input-group-text" id="basic-addon3">Pilih Data</span>
+                                        <select name="option" id="option" class="form-control">
+                                            <option> Akan Muncul Setelah Check Excel</option>
+                                        </select>
+                                    </div>
+
+                                </div>
+                                <textarea id="messageTemplate" class="form-control" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="file" class="form-label">Attach File</label>
+                                <input type="file" id="file" class="form-control">
+                                <div class="form-text">Optional: Attach an image, PDF, or other files</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="number" class="form-label">Pilih Kolom Nomor WhatsApp</label>
+                                <select name="number" id="number" class="form-control">
+                                    <option> Akan Muncul Setelah Check Excel</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Send Messages</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-12">
+                <div id="fileInfo" class="mt-3">
+                    <!-- Table will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.3/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/v/dt/dt-2.2.1/fh-4.0.1/r-3.0.3/sb-1.8.1/datatables.min.js"></script>
+    <script>
+        const socket = io();
+        const userID = localStorage.getItem('userID');
+        socket.emit('cek_user', userID);
+        socket.on('user', (user) => {
+            if (user.includes('No') || !userID) {
+                window.location.href = 'login.html'; // Redirect to login if not logged in
+            }
+        });
+        $('#idWa').html(userID);
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        logoutBtn.addEventListener('click', () => {
+            socket.emit('logout', userID);
+            localStorage.removeItem('userID');
+            window.location.href = 'login.html'; // Redirect to login after logout
+        });
+
+        // Handle Excel File Upload and check
+        const excelUploadForm = document.getElementById('excelUploadForm');
+        const fileInfo = document.getElementById('fileInfo');
+        const messageForm = document.getElementById('messageForm');
+
+        excelUploadForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+
+            if (!file || (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls'))) {
+                alert('Please upload a valid Excel file (.xlsx or .xls).');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = e.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetNames = workbook.SheetNames;
+                const sheet = workbook.Sheets[sheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+                // Generate HTML table for displaying data
+                const table = document.createElement('table');
+                table.classList.add('table', 'table-striped', 'table-bordered', 'mt-3');
+                table.id = 'example';
+
+                let tableHeaders = "<thead><tr>";
+                Object.keys(jsonData[0]).forEach(key => {
+                    tableHeaders += `<th>${key}</th>`;
+                });
+                tableHeaders += "</tr></thead>";
+
+                table.innerHTML = tableHeaders + "<tbody>" + jsonData.map(row => {
+                    return `<tr>${Object.values(row).map(value => `<td>${value}</td>`).join('')}</tr>`;
+                }).join('') + "</tbody>";
+
+                fileInfo.innerHTML = `
+                    <!-- <h5>File Information: <span id="openModalButton" class="btn btn-sm btn-primary">check lengkap</span></h5> -->
+                    <h5>File Information: 
+                    <p><strong>Sheet Name:</strong> ${sheetNames[0]}</p>
+                    <p><strong>Total Rows:</strong> ${jsonData.length}</p>
+                `;
+                fileInfo.appendChild(table); // Append table to the div
+
+                $(document).ready(function () {
+                    $('#example').DataTable({
+                        responsive: true, // Mengaktifkan mode responsif
+                        fixedHeader: true, // Menambahkan header tetap
+                        searchBuilder: true, // Menambahkan fitur pencarian lanjutan
+                        paging: true, // Mengaktifkan pagination
+                        ordering: true, // Mengaktifkan sorting kolom
+                        info: true, // Menampilkan informasi jumlah data
+                        language: {
+                            // url: "https://cdn.datatables.net/plug-ins/1.13.1/i18n/Indonesian.json", // Menggunakan bahasa Indonesia
+                            search: "Cari:",
+                            lengthMenu: "Tampilkan _MENU_ data per halaman",
+                            zeroRecords: "Tidak ada data yang ditemukan",
+                            info: "Menampilkan _START_ hingga _END_ dari _TOTAL_ data",
+                            infoEmpty: "Menampilkan 0 hingga 0 dari 0 data",
+                            infoFiltered: "(disaring dari _MAX_ total data)"
+                        }
+                    });
+                });
+
+                let option = '<option>Pilih </option>';
+                Object.keys(jsonData[0]).forEach(key => {
+                    option += `<option value="${key}">${key}</option>`;
+                });
+                document.getElementById('option').innerHTML = option;
+                document.getElementById('number').innerHTML = option;
+
+                // Insert jsonData as a JSON string into the hidden input with id "Json"
+                const hiddenInput = document.getElementById('Json');
+                hiddenInput.value = JSON.stringify(jsonData); // Set the value to the JSON string
+                console.log(hiddenInput.value);
+
+
+            };
+            reader.readAsBinaryString(file);
+        });
+
+
+        // Handle Message Sending
+        messageForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const json = document.getElementById('Json').value;
+            const number = document.getElementById('number').value;
+            const excel = document.getElementById('excelFile');
+            const messageTemplate = document.getElementById('messageTemplate').value.trim();
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+
+            if (!number && !file && !messageTemplate) {
+                alert('Please provide at least one input: numbers, a message template, or a file.');
+                return;
+            }
+
+            const formData = new FormData();
+            if (json) formData.append('json', json);
+            if (number) formData.append('number', number);
+            if (excel) formData.append('excel', excel);
+            if (messageTemplate) formData.append('messageTemplate', messageTemplate);
+            if (file) formData.append('file', file);
+
+            try {
+                const response = await fetch(`/send-message/${userID}`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+                alert(result.message || 'Messages processed.');
+            } catch (error) {
+                console.error('Error sending messages:', error);
+                alert('An error occurred while sending messages.');
+            }
+        });
+    </script>
+    <script>
+        const selectElement = document.getElementById('option');
+        const messageTemplateElement = document.getElementById('messageTemplate');
+
+        selectElement.addEventListener('change', function () {
+            let selectedValue = selectElement.value;
+            let textToInsert = `{${selectedValue}}`;
+
+            // Simpan posisi kursor dan scroll
+            const cursorPos = messageTemplateElement.selectionStart;
+            const textBefore = messageTemplateElement.value.substring(0, cursorPos);
+            const textAfter = messageTemplateElement.value.substring(cursorPos);
+
+            // Sisipkan teks ke dalam posisi kursor
+            messageTemplateElement.value = textBefore + textToInsert + textAfter;
+
+            // Setel kembali posisi kursor setelah teks yang disisipkan
+            const newCursorPos = cursorPos + textToInsert.length;
+            messageTemplateElement.selectionStart = messageTemplateElement.selectionEnd = newCursorPos;
+
+            // Scroll textarea jika diperlukan untuk memastikan kursor tetap terlihat
+            messageTemplateElement.scrollTop = messageTemplateElement.scrollHeight;
+
+            // Reset opsi select kembali ke nilai default
+            selectElement.selectedIndex = 0;
+            updatePreview();
+        });
+
+
+        // Elemen DOM
+        const messageInput = document.getElementById("messageTemplate");
+        const messagePreview = document.getElementById("messagePreview");
+
+        // Shortcut untuk keyboard
+        messageInput.addEventListener("keydown", (e) => {
+            if (e.ctrlKey && e.key === "b") {
+                e.preventDefault();
+                applyStyle("*"); // Bold
+            } else if (e.ctrlKey && e.key === "i") {
+                e.preventDefault();
+                applyStyle("_"); // Italic
+            } else if (e.ctrlKey && e.key === "s") {
+                e.preventDefault();
+                applyStyle("~"); // Strikethrough
+            }
+        });
+
+        // Fungsi untuk menerapkan gaya
+        function applyStyle(wrapper) {
+            const start = messageInput.selectionStart;
+            const end = messageInput.selectionEnd;
+            const text = messageInput.value;
+
+            // Tambahkan wrapper di sekitar teks yang dipilih
+            const before = text.slice(0, start);
+            const selected = text.slice(start, end);
+            const after = text.slice(end);
+
+            // Update teks di textarea
+            messageInput.value = before + wrapper + selected + wrapper + after;
+
+            // Reset fokus dan highlight
+            messageInput.focus();
+            messageInput.setSelectionRange(start + wrapper.length, end + wrapper.length);
+
+            updatePreview();
+        }
+        // Fungsi untuk memperbarui tampilan preview
+        function updatePreview() {
+            const inputText = messageInput.value;
+            const json = document.getElementById('Json').value;
+
+            const preview = json ? previewMessage(inputText, JSON.parse(json)) : inputText;
+
+            // Render pesan dengan gaya
+            messagePreview.innerHTML = preview
+                .replace(/\*(.*?)\*/g, "<strong>$1</strong>") // Bold
+                .replace(/_(.*?)_/g, "<em>$1</em>") // Italic
+                .replace(/~(.*?)~/g, "<del>$1</del>") // Strikethrough
+                .replace(/\b(http|https):\/\/[^\s]+/g, "<a href='$&' target='_blank'>$&</a>") // URL
+                .replace(/\bwww\.[^\s]+/g, "<a href='http://$&' target='_blank'>$&</a>") // www UR
+
+        }
+
+        // Fungsi untuk mengganti placeholder
+        function replacePlaceholders(template, data) {
+            return template.replace(/{(.*?)}/g, (_, key) => data[key] || `{${key}}`);
+        }
+
+        // Fungsi untuk preview (hanya data pertama)
+        function previewMessage(template, data) {
+            const previewData = data[0]; // Ambil data pertama
+            return replacePlaceholders(template, previewData);
+        }
+
+        // // Fungsi untuk generate semua pesan
+        // function generateAllMessages(template, data) {
+        //     return data.map((item) => replacePlaceholders(template, item));
+        // }
+
+
+        // Event listener untuk memperbarui preview saat mengetik
+        messageInput.addEventListener("input", updatePreview);
+
+        // Inisialisasi awal
+        updatePreview();
+
+        // Fungsi untuk merender pesan dengan file
+        function renderMessageWithFile(file) {
+            const fileWa = document.getElementById('fileWa');
+            fileWa.innerHTML = ''; // Reset isi pratinjau
+
+            if (file) {
+                const fileType = file.type;
+                const fileName = file.name;
+
+                if (fileType.startsWith('image/')) {
+                    // Jika file adalah gambar, tampilkan pratinjau gambar
+                    const imgElement = document.createElement('img');
+                    imgElement.src = URL.createObjectURL(file);
+                    imgElement.alt = fileName;
+                    fileWa.appendChild(imgElement);
+                } else {
+                    // Jika bukan gambar, tampilkan nama file dan ekstensi dalam bentuk kartu
+                    const fileExtension = fileName.split('.').pop().toUpperCase(); // Ekstensi file
+                    const fileCard = document.createElement('div');
+                    fileCard.className = 'file-card';
+
+                    const extensionElement = document.createElement('div');
+                    extensionElement.className = 'file-extension';
+                    extensionElement.textContent = fileExtension;
+
+                    const fileNameElement = document.createElement('div');
+                    fileNameElement.className = 'file-name';
+                    fileNameElement.textContent = fileName;
+
+                    fileCard.appendChild(extensionElement);
+                    fileCard.appendChild(fileNameElement);
+                    fileWa.appendChild(fileCard);
+                }
+            }
+        }
+
+        // Event listener untuk input file
+        document.getElementById('file').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            renderMessageWithFile(file);
+        });
+
+    </script>
+</body>
+
+</html>
