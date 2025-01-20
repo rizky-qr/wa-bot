@@ -8,11 +8,6 @@
 
 ---
 
-📜 Lisensi
-Proyek ini dilisensikan di bawah lisensi MIT. Lihat file LICENSE untuk detailnya.
-
----
-
-📞 Kontak
-- Penulis: Nama Anda
-- Email: namaanda@example.com
+📞 **Kontak**
+- *Penulis*: Muhamad Rizky
+- *Email*: paskerhuu@gmail.com
