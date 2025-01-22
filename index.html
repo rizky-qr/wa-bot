@@ -69,6 +69,40 @@
             flex-grow: 1;
             /* Membuat elemen judul file menggunakan sisa ruang */
         }
+
+        #alertContainer {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            z-index: 1000;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .alert .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .alert .close-btn:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 
@@ -168,6 +202,10 @@
                 </div>
             </div>
         </div>
+
+        <div id="alertContainer"></div>
+
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -193,6 +231,42 @@
             window.location.href = 'login.html'; // Redirect to login after logout
         });
 
+
+        socket.on('alert', (alert) => {
+            if (alert.includes('No') || alert.includes('Failed')) {
+                addAlert(`Danger Alert! \n${alert}`, '#f8d7da', '#721c24')
+            } else {
+                addAlert(`Success Alert!\n${alert}`, '#d4edda', '#155724')
+            }
+        });
+        function addAlert(message, backgroundColor = '#f8d7da', textColor = '#721c24') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = 'alert';
+            alert.style.backgroundColor = backgroundColor;
+            alert.style.color = textColor;
+            alert.style.borderColor = textColor;
+
+            alert.innerHTML = `
+            ${message}
+            <button class="close-btn" onclick="closeAlert(this)">&times;</button>
+        `;
+
+            alertContainer.prepend(alert);
+
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }
+            }, 5000);
+        }
+
+        function closeAlert(button) {
+            const alert = button.parentNode;
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        }
         // Handle Excel File Upload and check
         const excelUploadForm = document.getElementById('excelUploadForm');
         const fileInfo = document.getElementById('fileInfo');
@@ -305,7 +379,8 @@
                 });
 
                 const result = await response.json();
-                alert(result.message || 'Messages processed.');
+                console.log(result.results);
+                // alert(result.message || 'Messages processed.');
             } catch (error) {
                 console.error('Error sending messages:', error);
                 alert('An error occurred while sending messages.');

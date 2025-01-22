@@ -1,3 +1,13 @@
+// app.js atau index.js
+process.on('uncaughtException', (err) => {
+    console.error('Unhandled Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+
 const express = require('express');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const fs = require('fs');
@@ -12,6 +22,7 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
+const db = require('./db'); // Impor koneksi database
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -47,6 +58,8 @@ function delateFile(path, retries = 5, delay = 20000) {
 function replacePlaceholders(template, data) {
     return template.replace(/{(.*?)}/g, (_, key) => data[key] || `{${key}}`);
 }
+
+const userSockets = new Map();
 io.on('connection', (socket) => {
     console.log('New client connected');
 
@@ -124,32 +137,29 @@ io.on('connection', (socket) => {
             socket.emit('status', `No active session found for user ${userID}`);
         }
     });
+
     socket.on('cek_user', (userID) => {
-        // console.log(userID);
-        // const client = new Client({
-        //     authStrategy: new LocalAuth({ clientId: userID })
-        // });
-        // client.on('ready', () => {
-        //     console.log(`Client ${userID} is ready!`);
-        //     socket.emit('status', `Client ${userID} is ready!`);
-        //     socket.emit('user', `Yes Active session found for user ${userID}`);
-        // });
-        console.log(clients);
         const client = clients.get(userID);
         if (client) {
+            userSockets.set(userID, socket);
             console.log(`Yes Active session found for user ${userID}`);
             socket.emit('user', `Yes Active session found for user ${userID}`);
         } else {
             console.log(`No Active session found for user ${userID}`);
             socket.emit('user', `No active session found for user ${userID}`);
+            // const userID = [...userSockets.entries()].find(([_, s]) => s === socket)?.[0];
+            // if (userID) {
+            //     userSockets.delete(userID); // Hapus hubungan saat socket terputus
+            //     console.log(`Socket disconnected for user: ${userID}`);
+            // }
         }
     });
 });
 
-
 app.post('/send-message/:userID', upload.single('file'), async (req, res) => {
     const { userID } = req.params;
     const client = clients.get(userID);
+    const userSocket = userSockets.get(userID); // Ambil socket berdasarkan userID
 
     if (!client) {
         return res.status(400).json({ message: `No client found for user ${userID}` });
@@ -161,65 +171,58 @@ app.post('/send-message/:userID', upload.single('file'), async (req, res) => {
     const uploadedExcel = req.excel;
     const jsonData = JSON.parse(json)
 
-    let filePath = null;
 
-    if (uploadedFile) {
-        // if (!['image/png', 'image/jpeg', 'video/mp4'].includes(req.file.mimetype)) {
-        //     return res.status(400).json({ message: 'Invalid file format' });
-        // }
-        // Tambahkan ekstensi file asli ke file yang diunggah
-        const fileExtension = path.extname(uploadedFile.originalname);
-        filePath = `${uploadedFile.originalname}${fileExtension}`;
-        fs.renameSync(uploadedFile.path, filePath);
-    }
-
-    // console.log(uploadedExcel);
-    // console.log(number);
-    // console.log(jsonData);
-    // console.log(messageTemplate);
-    // console.log(filePath);
-    // console.log(uploadedFile);
-    // process.exit(1);  // Menghentikan proses dengan status kesalahan
-
-    let results = [];
     try {
-        // Gunakan for...of untuk iterasi sinkron
+        const filePath = uploadedFile ? `${uploadedFile.originalname}${path.extname(uploadedFile.originalname)}` : null;
+        const templateID = (messageTemplate || uploadedFile) ? (await db.query(
+            'INSERT INTO message_templates (userID, template, file_name, file_path) VALUES (?, ?, ?, ?)',
+            [userID, messageTemplate || '', uploadedFile?.originalname || null, uploadedFile ? filePath : null,
+            ]))[0].insertId : null;
+
+
+        let results = [];
+
         for (const data of jsonData) {
-            const whatsapp = data[number]; // Ambil nomor telepon berdasarkan kolom yang dipilih
-            const chatID = `${whatsapp}@c.us`; // Format WhatsApp ID
-            if (filePath && messageTemplate) {
-                // Kondisi 1: Ada file dan teks
-                const media = MessageMedia.fromFilePath(filePath);
-                const chatWa = replacePlaceholders(messageTemplate, data);
-                await client.sendMessage(chatID, media, { caption: chatWa });
-                results.push(`File and text sent to ${whatsapp}`);
-            } else if (messageTemplate) {
-                // Kondisi 2: Hanya teks
-                const chatWa = replacePlaceholders(messageTemplate, data);
-                await client.sendMessage(chatID, chatWa);
-                results.push(`Text sent to ${whatsapp}`);
-            } else if (filePath) {
-                // Kondisi 3: Hanya file
-                const media = MessageMedia.fromFilePath(filePath);
-                await client.sendMessage(chatID, media);
-                results.push(`File sent to ${whatsapp}`);
-            } else {
-                results.push(`No content to send for ${whatsapp}`);
+            const whatsapp = data[number];
+            const chatID = `${whatsapp}@c.us`;
+            let status = 'Success';
+
+            try {
+                if (filePath && messageTemplate) {
+                    const media = MessageMedia.fromFilePath(filePath);
+                    const chatWa = replacePlaceholders(messageTemplate, data);
+                    await client.sendMessage(chatID, media, { caption: chatWa });
+                } else if (messageTemplate) {
+                    const chatWa = replacePlaceholders(messageTemplate, data);
+                    await client.sendMessage(chatID, chatWa);
+                } else if (filePath) {
+                    const media = MessageMedia.fromFilePath(filePath);
+                    await client.sendMessage(chatID, media);
+                } else {
+                    status = 'No content';
+                }
+            } catch (err) {
+                console.error(`Failed to send to ${whatsapp}:`, err);
+                status = 'Failed';
             }
+
+            // Simpan riwayat pesan ke tabel `message_history`
+            await db.query(
+                'INSERT INTO message_history (userID, whatsapp, message, template_id, status, timestamp) VALUES (?, ?, ?, ?, ?, NOW())',
+                [userID, whatsapp, messageTemplate || '', templateID, status]
+            );
+
+            results.push({ whatsapp, status });
+            userSocket?.emit('alert', `${status} send to whatsapp : ${whatsapp}`);
+
             // Tambahkan delay setelah setiap pengiriman pesan
             await delay(angka(5000, 10000));
         }
 
-        console.log(results); // Menampilkan hasil dari semua pengiriman pesan
         res.json({ message: 'Messages processed.', results });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to send messages', error: error.message });
-    } finally {
-        // Delete the uploaded file after sending if it exists
-        if (filePath) {
-            delateFile(filePath);
-        }
+    } catch (err) {
+        console.error('Error processing messages:', err);
+        res.status(500).json({ message: 'An error occurred.' });
     }
 
 });

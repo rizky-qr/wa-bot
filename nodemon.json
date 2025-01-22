@@ -1,0 +1,18 @@
+{
+    "restartable": "rs",
+    "ignore": [
+        "node_modules/**"
+    ],
+    "watch": [
+        "*.*"
+    ],
+    "env": {
+        "NODE_ENV": "development"
+    },
+    "execMap": {
+        "js": "node"
+    },
+    "events": {
+        "crash": "kill $(lsof -t -i:3000) && nodemon app.js"
+    }
+}
